@@ -1,5 +1,64 @@
 # Changelog
 
+## [0.15.6.2] - 2026-04-04 — Anti-Skip Review Rule
+
+Review skills now enforce that every section gets evaluated, regardless of plan type. No more "this is a strategy doc so implementation sections don't apply." If a section genuinely has nothing to flag, say so and move on, but you have to look.
+
+### Added
+
+- **Anti-skip rule in all 4 review skills.** CEO review (sections 1-11), eng review (sections 1-4), design review (passes 1-7), and DX review (passes 1-8) all now require explicit evaluation of every section. Models can no longer skip sections by claiming the plan type makes them irrelevant.
+- **CEO review header fix.** Corrected "10 sections" to "11 sections" to match the actual section count (Section 11 is conditional but exists).
+
+## [0.15.6.1] - 2026-04-04
+
+### Fixed
+
+- **Skill prefix self-healing.** Setup now runs `gstack-relink` as a final consistency check after linking skills. If an interrupted setup, stale git state, or upgrade left your `name:` fields out of sync with `skill_prefix: false`, setup will auto-correct on the next run. No more `/gstack-qa` when you wanted `/qa`.
+
+## [0.15.6.0] - 2026-04-04 — Declarative Multi-Host Platform
+
+Adding a new coding agent to gstack used to mean touching 9 files and knowing the internals of `gen-skill-docs.ts`. Now it's one TypeScript config file and a re-export. Zero code changes elsewhere. Tests auto-parameterize.
+
+### Added
+
+- **Declarative host config system.** Every host is a typed `HostConfig` object in `hosts/*.ts`. The generator, setup, skill-check, platform-detect, uninstall, and worktree copy all consume configs instead of hardcoded switch statements. Adding a host = one file + re-export in `hosts/index.ts`.
+- **4 new hosts: OpenCode, Slate, Cursor, OpenClaw.** `bun run gen:skill-docs --host all` now generates for 8 hosts. Each produces valid SKILL.md output with zero `.claude/skills` path leakage.
+- **OpenClaw adapter.** OpenClaw gets a hybrid approach: config for paths/frontmatter/detection + a post-processing adapter for semantic tool mapping (Bash→exec, Agent→sessions_spawn, AskUserQuestion→prose). Includes `SOUL.md` via `staticFiles` config.
+- **106 new tests.** 71 tests for config validation, HOST_PATHS derivation, export CLI, golden-file regression, and per-host correctness. 35 parameterized smoke tests covering all 7 external hosts (output exists, no path leakage, frontmatter valid, freshness, skip rules).
+- **`host-config-export.ts` CLI.** Exposes host configs to bash scripts via `list`, `get`, `detect`, `validate`, `symlinks` commands. No YAML parsing needed in bash.
+- **Contributor `/gstack-contrib-add-host` skill.** Guides new host config creation. Lives in `contrib/`, excluded from user installs.
+- **Golden-file baselines.** Snapshots of ship/SKILL.md for Claude, Codex, and Factory verify the refactor produces identical output.
+- **Per-host install instructions in README.** Every supported agent has its own copy-paste install block.
+
+### Changed
+
+- **`gen-skill-docs.ts` is now config-driven.** EXTERNAL_HOST_CONFIG, transformFrontmatter host branches, path/tool rewrite if-chains, ALL_HOSTS array, and skill skip logic all replaced with config lookups.
+- **`types.ts` derives Host type from configs.** No more hardcoded `'claude' | 'codex' | 'factory'`. HOST_PATHS built dynamically from each config's globalRoot/usesEnvVars.
+- **Preamble, co-author trailer, resolver suppression all read from config.** hostConfigDir, co-author strings, and suppressedResolvers driven by host configs instead of per-host switch statements.
+- **`skill-check.ts`, `worktree.ts`, `platform-detect` iterate configs.** No per-host blocks to maintain.
+
+### Fixed
+
+- **Sidebar E2E tests now self-contained.** Fixed stale URL assertion in sidebar-url-accuracy, simplified sidebar-css-interaction task. All 3 sidebar tests pass without external browser dependencies.
+
+## [0.15.5.0] - 2026-04-04 — Interactive DX Review + Plan Mode Skill Fix
+
+`/plan-devex-review` now feels like sitting down with a developer advocate who has used 100 CLI tools. Instead of speed-running 8 scores, it asks who your developer is, benchmarks you against competitors' onboarding times, makes you design your magical moment, and traces every friction point step by step before scoring anything.
+
+### Added
+
+- **Developer persona interrogation.** The review starts by asking WHO your developer is, with concrete archetypes (YC founder, platform engineer, frontend dev, OSS contributor). The persona shapes every question for the rest of the review.
+- **Empathy narrative as conversation starter.** A first-person "I'm a developer who just found your tool..." walkthrough gets shown to you for reaction before any scoring begins. You correct it, and the corrected version goes into the plan.
+- **Competitive DX benchmarking.** WebSearch finds your competitors' TTHW and onboarding approaches. You pick your target tier (Champion < 2min, Competitive 2-5min, or current trajectory). That target follows you through every pass.
+- **Magical moment design.** You choose how developers should experience the "oh wow" moment: playground, demo command, video, or guided tutorial, with effort/tradeoff analysis.
+- **Three review modes.** DX EXPANSION (push for best-in-class), DX POLISH (bulletproof every touchpoint), DX TRIAGE (critical gaps only, ship soon).
+- **Friction-point journey tracing.** Instead of a static table, the review traces actual README/docs paths and asks one AskUserQuestion per friction point found.
+- **First-time developer roleplay.** A timestamped confusion report from your persona's perspective, grounded in actual docs and code.
+
+### Fixed
+
+- **Skill invocation during plan mode.** When you invoke a skill (like `/plan-ceo-review`) during plan mode, Claude now treats it as executable instructions instead of ignoring it and trying to exit. The loaded skill takes precedence over generic plan mode behavior. STOP points actually stop. This fix ships in every skill's preamble.
+
 ## [0.15.4.0] - 2026-04-03 — Autoplan DX Integration + Docs
 
 `/autoplan` now auto-detects developer-facing plans and runs `/plan-devex-review` as Phase 3.5, with full dual-voice adversarial review (Claude subagent + Codex). If your plan mentions APIs, CLIs, SDKs, agent actions, or anything developers integrate with, the DX review kicks in automatically. No extra commands needed.
